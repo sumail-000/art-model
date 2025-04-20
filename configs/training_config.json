@@ -1,0 +1,206 @@
+{
+  "data": {
+    "dataset": {
+      "train_size": 10000000,
+      "validation_size": 50000,
+      "test_size": 10000,
+      "image_resolution": 256,
+      "sources": [
+        {
+          "name": "curated_pixel_art",
+          "weight": 0.6,
+          "path": "data/curated_pixel_art"
+        },
+        {
+          "name": "procedural_generated",
+          "weight": 0.2,
+          "path": "data/procedural"
+        },
+        {
+          "name": "user_feedback",
+          "weight": 0.2,
+          "path": "data/feedback_pairs"
+        }
+      ]
+    },
+    "augmentation": {
+      "enabled": true,
+      "random_crop": true,
+      "color_jitter": {
+        "brightness": 0.1,
+        "contrast": 0.1,
+        "saturation": 0.1,
+        "hue": 0.05
+      },
+      "random_horizontal_flip": true,
+      "grayscale_probability": 0.05
+    },
+    "data_loaders": {
+      "batch_size": 64,
+      "num_workers": 8,
+      "pin_memory": true,
+      "prefetch_factor": 2
+    }
+  },
+  "pre_training": {
+    "clip_encoder": {
+      "epochs": 50,
+      "learning_rate": 1e-4,
+      "weight_decay": 1e-5,
+      "temperature": 0.07,
+      "hard_negative_mining": {
+        "enabled": true,
+        "count": 5,
+        "refresh_frequency": 1000
+      },
+      "optimizer": "AdamW",
+      "scheduler": "cosine_with_warmup",
+      "warmup_steps": 5000
+    },
+    "pixel_gan": {
+      "epochs_per_resolution": {
+        "16": 20,
+        "64": 30,
+        "256": 50
+      },
+      "batch_sizes": {
+        "16": 256,
+        "64": 128,
+        "256": 64
+      },
+      "learning_rate": 5e-5,
+      "ema_decay": 0.9999,
+      "diffusion_steps": 1000,
+      "scheduler": "cosine",
+      "augment_pipe": {
+        "enabled": true,
+        "p": 0.2
+      }
+    },
+    "intent_parser": {
+      "epochs": 30,
+      "learning_rate": 2e-5,
+      "weight_decay": 1e-6,
+      "lora": {
+        "enabled": true,
+        "r": 16,
+        "alpha": 32
+      }
+    }
+  },
+  "human_feedback": {
+    "collection": {
+      "participants": 500,
+      "samples_per_participant": 50,
+      "comparison_count": 25000,
+      "absolute_ratings": 100000
+    },
+    "dpo": {
+      "reference_free": false,
+      "learning_rate": 1e-6,
+      "kl_coef": 0.1,
+      "epochs": 3,
+      "batch_size": 32
+    },
+    "dialogue": {
+      "max_turns": 5,
+      "clarification_types": [
+        "style",
+        "technical",
+        "composition",
+        "reference"
+      ],
+      "nlp_engine": "gpt-4o",
+      "sampling_temperature": 0.7
+    }
+  },
+  "meta_learning": {
+    "maml": {
+      "inner_lr": 0.001,
+      "meta_lr": 0.0001,
+      "first_order": true,
+      "meta_batch_size": 16,
+      "inner_steps": 5,
+      "meta_steps": 1000
+    },
+    "oml": {
+      "adaptation_lr": 0.001,
+      "meta_update_frequency": 10,
+      "max_task_buffer": 100,
+      "prioritize_recent": true
+    }
+  },
+  "real_time_adaptation": {
+    "federated_learning": {
+      "enabled": true,
+      "min_clients": 10,
+      "aggregation_rounds": 50,
+      "client_epochs": 1,
+      "dp_noise_multiplier": 0.1,
+      "dp_clipping_norm": 1.0
+    },
+    "ntm": {
+      "memory_updates_per_interaction": 5,
+      "memory_read_strength": 1.0,
+      "user_specific_slots": 16
+    },
+    "adversarial": {
+      "w_gan_critic_updates": 5,
+      "gradient_penalty_weight": 10.0,
+      "quality_threshold": 0.7
+    }
+  },
+  "evaluation": {
+    "metrics": {
+      "pixel_accuracy_k": [1, 3, 5],
+      "ifs_threshold": 0.85,
+      "fid_target": 30.0,
+      "satisfaction_target": 4.5
+    },
+    "stress_testing": {
+      "categories": [
+        "ambiguity",
+        "edge_cases",
+        "adversarial"
+      ],
+      "samples_per_category": 1000
+    },
+    "ablation": {
+      "components": [
+        "ntm",
+        "meta_learning",
+        "hierarchical_generation",
+        "critic_refiner"
+      ],
+      "data_compositions": [
+        "all_curated",
+        "all_procedural",
+        "minimal_feedback",
+        "maximal_feedback"
+      ]
+    }
+  },
+  "deployment": {
+    "a_b_testing": {
+      "variants": 3,
+      "traffic_split": [0.1, 0.1, 0.8],
+      "min_interactions": 10000,
+      "confidence_level": 0.95
+    },
+    "monitoring": {
+      "metrics_frequency_seconds": 60,
+      "log_level": "INFO",
+      "inference_time_target_ms": 2000,
+      "alert_thresholds": {
+        "error_rate": 0.01,
+        "latency_ms": 5000,
+        "gpu_utilization": 0.9
+      }
+    },
+    "feedback_loop": {
+      "collection_batch_size": 10000,
+      "retraining_frequency_days": 7,
+      "major_update_frequency_months": 3
+    }
+  }
+} 

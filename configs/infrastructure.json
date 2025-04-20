@@ -1,0 +1,177 @@
+{
+  "compute": {
+    "training": {
+      "provider": "google_cloud",
+      "instance_type": "tpu-v4-pod-128",
+      "zone": "us-central2-b",
+      "num_nodes": 8,
+      "storage_type": "persistent_ssd",
+      "storage_size_gb": 2048,
+      "image": "tensorflow/tensorflow:latest-gpu"
+    },
+    "inference": {
+      "provider": "google_cloud",
+      "instance_types": [
+        {
+          "name": "a2-ultragpu-8g",
+          "purpose": "image_generation",
+          "count": 4
+        },
+        {
+          "name": "n1-standard-32",
+          "purpose": "api_serving",
+          "count": 8
+        }
+      ],
+      "zone": "us-central1-a",
+      "autoscaling": {
+        "enabled": true,
+        "min_nodes": 2,
+        "max_nodes": 16,
+        "scale_based_on": "request_volume"
+      }
+    },
+    "edge_deployment": {
+      "onnx_optimization": {
+        "enabled": true,
+        "target_platforms": ["arm64", "x86_64"],
+        "quantization": "int8"
+      }
+    }
+  },
+  "storage": {
+    "model_artifacts": {
+      "type": "gcs_bucket",
+      "name": "pixelmind-x-models",
+      "versioning": true,
+      "lifecycle": {
+        "archive_after_days": 90
+      }
+    },
+    "training_data": {
+      "type": "gcs_bucket",
+      "name": "pixelmind-x-training-data",
+      "versioning": false
+    },
+    "user_generated_content": {
+      "type": "gcs_bucket",
+      "name": "pixelmind-x-user-content",
+      "versioning": false,
+      "lifecycle": {
+        "archive_after_days": 365
+      }
+    }
+  },
+  "databases": {
+    "vector_db": {
+      "type": "pinecone",
+      "index_name": "pixelmind-x-styles",
+      "dimensions": 1024,
+      "metric": "cosine",
+      "pods": 2
+    },
+    "metadata_db": {
+      "type": "postgres",
+      "version": "14",
+      "instance_type": "db-custom-16-32768",
+      "storage_size_gb": 1024,
+      "high_availability": true,
+      "backup_schedule": "daily",
+      "backup_retention_days": 30
+    },
+    "cache": {
+      "type": "redis",
+      "version": "6.2",
+      "instance_type": "cache.m6g.2xlarge",
+      "cluster_mode": true,
+      "shards": 3,
+      "replicas_per_shard": 1
+    }
+  },
+  "networking": {
+    "load_balancer": {
+      "type": "global_http",
+      "ssl": true,
+      "cdn_enabled": true
+    },
+    "api_gateway": {
+      "websocket_enabled": true,
+      "max_message_size_mb": 10,
+      "rate_limiting": {
+        "requests_per_second": 100,
+        "burst": 200
+      }
+    },
+    "vpc": {
+      "private_networking": true,
+      "nat_gateway": true
+    }
+  },
+  "monitoring": {
+    "logging": {
+      "provider": "stackdriver",
+      "retention_days": 30
+    },
+    "metrics": {
+      "provider": "prometheus",
+      "scrape_interval_seconds": 15,
+      "retention_days": 90
+    },
+    "tracing": {
+      "provider": "opentelemetry",
+      "sampling_rate": 0.1
+    },
+    "alerts": {
+      "latency_threshold_ms": 2000,
+      "error_rate_threshold": 0.01,
+      "notification_channels": [
+        "email:alerts@pixelmind-x.ai",
+        "slack:engineering-alerts"
+      ]
+    }
+  },
+  "deployment": {
+    "containerization": {
+      "technology": "docker",
+      "orchestration": "kubernetes",
+      "registry": "gcr.io/pixelmind-x"
+    },
+    "ci_cd": {
+      "provider": "github_actions",
+      "strategy": {
+        "development": "continuous_deployment",
+        "staging": "manual_approval",
+        "production": "manual_approval"
+      }
+    },
+    "environments": [
+      {
+        "name": "development",
+        "scale": 0.1
+      },
+      {
+        "name": "staging",
+        "scale": 0.3
+      },
+      {
+        "name": "production",
+        "scale": 1.0
+      }
+    ]
+  },
+  "security": {
+    "authentication": {
+      "provider": "firebase_auth",
+      "mfa_enabled": true
+    },
+    "encryption": {
+      "data_at_rest": true,
+      "data_in_transit": true,
+      "key_management": "google_kms"
+    },
+    "network_security": {
+      "ddos_protection": true,
+      "waf_enabled": true
+    }
+  }
+}
